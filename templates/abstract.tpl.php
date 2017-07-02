@@ -58,6 +58,23 @@ class Exception extends \Exception
 
 abstract class <CLASSNAME_ABSTRACT>
 {
+    /**
+     * @brief   Default cURL options to set during init
+     */
+    const CURL_OPTS = Array(
+        CURLOPT_RETURNTRANSFER => true,         // return web page
+        CURLOPT_HEADER         => false,        // don't return headers
+        CURLOPT_FOLLOWLOCATION => true,         // follow redirects
+        CURLOPT_ENCODING       => "",           // handle all encodings
+        CURLOPT_USERAGENT      => "ZabbixInterface",     // who am i
+        CURLOPT_AUTOREFERER    => true,         // set referer on redirect
+        CURLOPT_CONNECTTIMEOUT => 2,            // timeout on connect
+        CURLOPT_TIMEOUT        => 120,          // timeout on response
+        CURLOPT_MAXREDIRS      => 10,           // stop after 10 redirects
+        CURLOPT_POST           => 1,            // i am sending post data
+        CURLOPT_SSL_VERIFYHOST => 0,            // don't verify ssl
+        CURLOPT_SSL_VERIFYPEER => false,        //
+      );
 
     /**
      * @brief   Anonymous API functions.
@@ -134,6 +151,12 @@ abstract class <CLASSNAME_ABSTRACT>
     private $sslContext = array();
 
     /**
+     * @brief   cURL handle.
+     */
+
+    private $_cURL = NULL;
+
+    /**
      * @brief   Class constructor.
      *
      * @param   $apiUrl         API url (e.g. http://FQDN/zabbix/api_jsonrpc.php)
@@ -147,6 +170,15 @@ abstract class <CLASSNAME_ABSTRACT>
 
     public function __construct($apiUrl='', $user='', $password='', $httpUser='', $httpPassword='', $authToken='', $sslContext=NULL)
     {
+        $this->_cURL = curl_init();
+        if (!$this->_cURL) {
+          throw new Exception('Unable to initialize cURL library');
+        }
+
+        if (!curl_setopt_array($this->_cURL, static::CURL_OPTS)) {
+          throw new Exception('Unable to set cURL options');
+        }
+
         if($apiUrl)
             $this->setApiUrl($apiUrl);
 
@@ -184,6 +216,7 @@ abstract class <CLASSNAME_ABSTRACT>
     public function setApiUrl($apiUrl)
     {
         $this->apiUrl = $apiUrl;
+        curl_setopt($this->_cURL, CURLOPT_URL, $apiUrl);
         return $this;
     }
 
@@ -321,27 +354,14 @@ abstract class <CLASSNAME_ABSTRACT>
         if($this->printCommunication)
             echo 'API request: '.$this->requestEncoded;
 
-        // initialize context
-        $context = array(
-            'http' => array(
-                'method'  => 'POST',
-                'header'  => 'Content-type: application/json-rpc'."\r\n".$this->extraHeaders,
-                'content' => $this->requestEncoded
-            )
-        );
-        if($this->sslContext)
-            $context['ssl'] = $this->sslContext;
+        // initialize request
+        $curlOpts = Array(CURLOPT_HTTPHEADER => Array('Content-type: application/json-rpc', $this->extraHeaders), CURLOPT_POSTFIELDS => $this->requestEncoded);
+        if (!curl_setopt_array($this->_cURL, $curlOpts)) {
+          throw new Exception('Unable to set cURL options');
+        }
 
-        // create stream context
-        $streamContext = stream_context_create($context);
-
-        // get file handler
-        $fileHandler = @fopen($this->getApiUrl(), 'rb', false, $streamContext);
-        if(!$fileHandler)
-            throw new Exception('Could not connect to "'.$this->getApiUrl().'"');
-
-        // get response
-        $this->response = @stream_get_contents($fileHandler);
+        // execute and get response
+        $this->response = curl_exec($this->_cURL);
 
         // debug logging
         if($this->printCommunication)
