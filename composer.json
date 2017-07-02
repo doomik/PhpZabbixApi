@@ -1,15 +1,14 @@
 {
-    "name": "confirm-it-solutions/php-zabbix-api",
+    "name": "doomik/php-zabbix-api",
     "type": "library",
     "description": "PhpZabbixApi library",
     "keywords": ["zabbix","api"],
-    "homepage": "http://github.com/confirm-it-solutions/PhpZabbixApi",
+    "homepage": "http://github.com/doomik/PhpZabbixApi",
     "license": "MIT",
     "authors": [
         {
-            "name": "Dominique Barton",
-            "email": "dbarton@confirm.ch",
-            "homepage": "http://www.confirm.ch",
+            "name": "Jaroslav Kasparek",
+            "email": "doomik@users.noreply.github.com",
             "role": "Developer"
         }
     ],
